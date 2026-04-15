@@ -10,7 +10,6 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'settings_view/user_profile_view.dart';
 
 class HomePage extends StatefulWidget {
   @override
@@ -55,7 +54,7 @@ class _HomePageState extends State<HomePage> {
       print("HomePage: WARNING - User ID not found in shared preferences.");
 
       // Try to check if user is actually logged in
-      final firebaseUser = await FirebaseAuth.instance.currentUser;
+      final firebaseUser = FirebaseAuth.instance.currentUser;
       if (firebaseUser != null) {
         print("HomePage: User is logged in but userId not found in SharedPreferences. Email: ${firebaseUser.email}");
 
