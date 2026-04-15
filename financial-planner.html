@@ -1,0 +1,1737 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinPlan — Multi-Objective Financial Planning Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@300;400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&family=Bebas+Neue&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface2: #181818;
+    --border: #252525;
+    --border-bright: #333333;
+    --gold: #c9a84c;
+    --gold-dim: #8a6f2e;
+    --gold-bg: rgba(201,168,76,0.06);
+    --green: #4caf7d;
+    --red: #d64f4f;
+    --blue: #4a8fe8;
+    --text: #e8e8e8;
+    --text-dim: #888888;
+    --text-muted: #555555;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 14px;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    height: 56px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: sticky;
+    top: 0;
+    background: var(--bg);
+    z-index: 100;
+  }
+
+  .logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 24px;
+    letter-spacing: 3px;
+    color: var(--gold);
+  }
+
+  .logo span {
+    color: var(--text-muted);
+    font-size: 11px;
+    font-family: var(--mono);
+    letter-spacing: 1px;
+    margin-left: 12px;
+    font-weight: 300;
+  }
+
+  .header-status {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    letter-spacing: 1px;
+  }
+
+  .status-dot {
+    display: inline-block;
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    margin-right: 6px;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  /* ── LAYOUT ── */
+  .shell {
+    display: grid;
+    grid-template-columns: 340px 1fr;
+    min-height: calc(100vh - 56px);
+  }
+
+  /* ── SIDEBAR ── */
+  .sidebar {
+    border-right: 1px solid var(--border);
+    padding: 24px;
+    overflow-y: auto;
+    background: var(--surface);
+  }
+
+  .sidebar-section {
+    margin-bottom: 28px;
+  }
+
+  .section-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: var(--gold);
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .field-row {
+    margin-bottom: 12px;
+  }
+
+  .field-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-bottom: 5px;
+    letter-spacing: 0.5px;
+  }
+
+  input[type="number"], select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border-bright);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 13px;
+    padding: 8px 10px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+
+  input[type="number"]:focus, select:focus {
+    border-color: var(--gold);
+  }
+
+  select {
+    cursor: pointer;
+  }
+
+  select option {
+    background: var(--surface2);
+  }
+
+  .input-prefix {
+    position: relative;
+  }
+
+  .input-prefix::before {
+    content: '₹';
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    pointer-events: none;
+  }
+
+  .input-prefix input {
+    padding-left: 22px;
+  }
+
+  .input-suffix {
+    position: relative;
+  }
+
+  .input-suffix::after {
+    content: attr(data-suffix);
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 11px;
+    pointer-events: none;
+  }
+
+  .input-suffix input {
+    padding-right: 36px;
+  }
+
+  .two-col {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .run-btn {
+    width: 100%;
+    background: var(--gold);
+    color: #000;
+    border: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 2px;
+    padding: 12px;
+    cursor: pointer;
+    text-transform: uppercase;
+    transition: background 0.15s, transform 0.1s;
+    margin-top: 8px;
+  }
+
+  .run-btn:hover { background: #e0b85a; }
+  .run-btn:active { transform: scale(0.99); }
+
+  /* ── MAIN PANEL ── */
+  .main {
+    padding: 24px;
+    overflow-y: auto;
+    background: var(--bg);
+  }
+
+  /* ── TAB NAV ── */
+  .tab-nav {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+    gap: 0;
+  }
+
+  .tab-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    padding: 10px 20px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+    margin-bottom: -1px;
+  }
+
+  .tab-btn:hover { color: var(--text-dim); }
+
+  .tab-btn.active {
+    color: var(--gold);
+    border-bottom-color: var(--gold);
+  }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 400px;
+    color: var(--text-muted);
+    font-family: var(--mono);
+    font-size: 12px;
+    letter-spacing: 1px;
+    text-align: center;
+    gap: 12px;
+  }
+
+  .empty-state .glyph {
+    font-size: 40px;
+    opacity: 0.2;
+    font-family: var(--mono);
+  }
+
+  /* ── KPI ROW ── */
+  .kpi-row {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 1px;
+    background: var(--border);
+    border: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+
+  .kpi-card {
+    background: var(--surface);
+    padding: 16px 20px;
+  }
+
+  .kpi-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    margin-bottom: 6px;
+  }
+
+  .kpi-value {
+    font-family: var(--mono);
+    font-size: 20px;
+    font-weight: 500;
+    color: var(--text);
+  }
+
+  .kpi-value.pos { color: var(--green); }
+  .kpi-value.neg { color: var(--red); }
+  .kpi-value.gold { color: var(--gold); }
+
+  .kpi-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+  }
+
+  /* ── PANEL GRID ── */
+  .panel-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+
+  .panel-grid.full { grid-template-columns: 1fr; }
+  .panel-grid.three { grid-template-columns: repeat(3, 1fr); }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+  }
+
+  .panel-header {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .panel-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .show-math-btn {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    background: none;
+    border: 1px solid var(--border-bright);
+    padding: 3px 8px;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+
+  .show-math-btn:hover {
+    color: var(--gold);
+    border-color: var(--gold);
+  }
+
+  .panel-body {
+    padding: 16px;
+  }
+
+  /* ── MATH MODAL ── */
+  .math-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.85);
+    z-index: 200;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .math-overlay.open { display: flex; }
+
+  .math-modal {
+    background: var(--surface);
+    border: 1px solid var(--gold-dim);
+    width: 640px;
+    max-width: 95vw;
+    max-height: 80vh;
+    overflow-y: auto;
+  }
+
+  .math-modal-header {
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .math-modal-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--gold);
+  }
+
+  .close-btn {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    font-size: 18px;
+    cursor: pointer;
+    font-family: var(--mono);
+    line-height: 1;
+  }
+
+  .close-btn:hover { color: var(--text); }
+
+  .math-modal-body {
+    padding: 20px;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.8;
+    color: var(--text-dim);
+  }
+
+  .math-block {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: var(--bg);
+    border-left: 2px solid var(--gold-dim);
+  }
+
+  .math-block .formula {
+    color: var(--gold);
+    font-size: 13px;
+    margin-bottom: 4px;
+  }
+
+  .math-block .substitution {
+    color: var(--text-dim);
+    font-size: 11px;
+  }
+
+  .math-block .result {
+    color: var(--green);
+    font-size: 12px;
+    margin-top: 4px;
+    font-weight: 500;
+  }
+
+  /* ── FEASIBILITY TABLE ── */
+  .feasibility-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+
+  .feasibility-table th {
+    text-align: left;
+    padding: 8px 12px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+  }
+
+  .feasibility-table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border);
+    vertical-align: middle;
+  }
+
+  .feasibility-table tr:last-child td { border-bottom: none; }
+
+  .badge {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border: 1px solid;
+    display: inline-block;
+  }
+
+  .badge.ok { color: var(--green); border-color: var(--green); }
+  .badge.warn { color: #e09d3d; border-color: #e09d3d; }
+  .badge.fail { color: var(--red); border-color: var(--red); }
+
+  /* ── ALLOCATION BAR ── */
+  .alloc-row {
+    margin-bottom: 14px;
+  }
+
+  .alloc-meta {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--mono);
+    font-size: 11px;
+    margin-bottom: 5px;
+  }
+
+  .alloc-name { color: var(--text-dim); }
+  .alloc-numbers { color: var(--text); }
+
+  .alloc-bar-track {
+    height: 6px;
+    background: var(--border);
+    position: relative;
+  }
+
+  .alloc-bar-fill {
+    height: 100%;
+    transition: width 0.4s ease;
+  }
+
+  /* ── STRESS SCENARIO CARDS ── */
+  .scenario-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 16px;
+  }
+
+  .scenario-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    padding: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .scenario-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+
+  .scenario-card.loss::before { background: var(--red); }
+  .scenario-card.medical::before { background: #e09d3d; }
+  .scenario-card.inflation::before { background: var(--blue); }
+
+  .scenario-name {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  .scenario-impact {
+    font-family: var(--mono);
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+
+  .scenario-desc {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  .scenario-adjustments {
+    margin-top: 12px;
+    padding-top: 12px;
+    border-top: 1px solid var(--border);
+  }
+
+  .adj-item {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-dim);
+    margin-bottom: 4px;
+    padding-left: 10px;
+    position: relative;
+  }
+
+  .adj-item::before {
+    content: '→';
+    position: absolute;
+    left: 0;
+    color: var(--gold-dim);
+  }
+
+  /* ── ROADMAP TABLE ── */
+  .roadmap-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-family: var(--mono);
+    font-size: 11px;
+  }
+
+  .roadmap-table th {
+    text-align: left;
+    padding: 8px 10px;
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    font-weight: 400;
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+  }
+
+  .roadmap-table td {
+    padding: 9px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-dim);
+  }
+
+  .roadmap-table tr:hover td {
+    background: var(--surface2);
+    color: var(--text);
+  }
+
+  .month-label {
+    color: var(--gold);
+    font-weight: 500;
+  }
+
+  .running-total {
+    color: var(--green);
+  }
+
+  /* ── CHART BARS ── */
+  .bar-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 80px;
+    margin-top: 8px;
+  }
+
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    height: 100%;
+    justify-content: flex-end;
+    gap: 4px;
+  }
+
+  .bar-fill {
+    width: 100%;
+    background: var(--gold);
+    opacity: 0.7;
+    transition: height 0.3s ease;
+    min-height: 2px;
+  }
+
+  .bar-fill:hover { opacity: 1; }
+
+  .bar-label {
+    font-family: var(--mono);
+    font-size: 8px;
+    color: var(--text-muted);
+    text-align: center;
+  }
+
+  /* ── DIVIDER TEXT ── */
+  .section-divider {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    padding-bottom: 8px;
+    margin: 20px 0 14px;
+  }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 4px; height: 4px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); }
+
+  /* ── ANIMATIONS ── */
+  .fade-in {
+    animation: fadeIn 0.3s ease forwards;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .number-tick {
+    transition: color 0.2s;
+  }
+
+  /* ── TOOLTIP ── */
+  [data-tip] {
+    position: relative;
+    cursor: help;
+  }
+
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: 120%;
+    left: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border-bright);
+    color: var(--text-dim);
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 6px 10px;
+    white-space: nowrap;
+    z-index: 50;
+    pointer-events: none;
+  }
+
+  /* ── INFO LINE ── */
+  .info-line {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text-muted);
+    margin-top: 4px;
+    letter-spacing: 0.3px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FINPLAN <span>MULTI-OBJECTIVE PLANNING ENGINE v1.0</span></div>
+  <div class="header-status"><span class="status-dot"></span>ALL CALCULATIONS CLIENT-SIDE</div>
+</header>
+
+<div class="shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="section-label">Income & Expenses</div>
+
+      <div class="field-row">
+        <div class="field-label">Monthly Gross Income</div>
+        <div class="input-prefix">
+          <input type="number" id="income" value="80000" min="0">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-label">Fixed Expenses (rent, EMI, etc.)</div>
+        <div class="input-prefix">
+          <input type="number" id="fixed_exp" value="30000" min="0">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-label">Variable Expenses (food, transport)</div>
+        <div class="input-prefix">
+          <input type="number" id="var_exp" value="12000" min="0">
+        </div>
+      </div>
+
+      <div class="field-row">
+        <div class="field-label">Existing Debt Repayment / Month</div>
+        <div class="input-prefix">
+          <input type="number" id="existing_debt" value="5000" min="0">
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Financial Goals</div>
+
+      <div class="section-divider">Emergency Fund</div>
+      <div class="two-col">
+        <div class="field-row">
+          <div class="field-label">Target (months expenses)</div>
+          <div class="input-suffix" data-suffix="mo">
+            <input type="number" id="ef_months" value="6" min="1" max="24">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">Timeline</div>
+          <div class="input-suffix" data-suffix="mo">
+            <input type="number" id="ef_timeline" value="12" min="1" max="60">
+          </div>
+        </div>
+      </div>
+
+      <div class="section-divider">House Down Payment</div>
+      <div class="field-row">
+        <div class="field-label">Target Amount</div>
+        <div class="input-prefix">
+          <input type="number" id="house_target" value="500000" min="0">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Timeline</div>
+        <div class="input-suffix" data-suffix="mo">
+          <input type="number" id="house_timeline" value="36" min="1" max="120">
+        </div>
+      </div>
+
+      <div class="section-divider">Retirement Corpus</div>
+      <div class="two-col">
+        <div class="field-row">
+          <div class="field-label">Target Corpus</div>
+          <div class="input-prefix">
+            <input type="number" id="retire_target" value="10000000" min="0">
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field-label">Years to retire</div>
+          <div class="input-suffix" data-suffix="yr">
+            <input type="number" id="retire_years" value="25" min="1" max="50">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="section-label">Risk Profile</div>
+      <div class="field-row">
+        <div class="field-label">Risk Appetite</div>
+        <select id="risk">
+          <option value="conservative">Conservative</option>
+          <option value="moderate" selected>Moderate</option>
+          <option value="aggressive">Aggressive</option>
+        </select>
+      </div>
+      <div class="field-row">
+        <div class="field-label">Expected SIP Return (CAGR %)</div>
+        <div class="input-suffix" data-suffix="%">
+          <input type="number" id="sip_return" value="12" min="1" max="30">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field-label">FD Interest Rate (%)</div>
+        <div class="input-suffix" data-suffix="%">
+          <input type="number" id="fd_rate" value="7" min="1" max="15">
+        </div>
+      </div>
+    </div>
+
+    <button class="run-btn" onclick="runEngine()">RUN ENGINE</button>
+    <div class="info-line" style="margin-top: 8px; text-align: center;">All outputs are formula-derived. Use Show Math to trace any number.</div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <main class="main">
+
+    <nav class="tab-nav">
+      <button class="tab-btn active" onclick="switchTab('overview')">Overview</button>
+      <button class="tab-btn" onclick="switchTab('feasibility')">Feasibility</button>
+      <button class="tab-btn" onclick="switchTab('allocation')">Allocation</button>
+      <button class="tab-btn" onclick="switchTab('stress')">Stress Tests</button>
+      <button class="tab-btn" onclick="switchTab('roadmap')">12-Month Roadmap</button>
+    </nav>
+
+    <!-- OVERVIEW TAB -->
+    <div class="tab-panel active" id="tab-overview">
+      <div class="empty-state" id="overview-empty">
+        <div class="glyph">[--]</div>
+        <div>Configure inputs and run the engine to generate your plan.</div>
+      </div>
+      <div id="overview-content" style="display:none"></div>
+    </div>
+
+    <!-- FEASIBILITY TAB -->
+    <div class="tab-panel" id="tab-feasibility">
+      <div class="empty-state" id="feasibility-empty">
+        <div class="glyph">[--]</div>
+        <div>No data. Run the engine first.</div>
+      </div>
+      <div id="feasibility-content" style="display:none"></div>
+    </div>
+
+    <!-- ALLOCATION TAB -->
+    <div class="tab-panel" id="tab-allocation">
+      <div class="empty-state" id="allocation-empty">
+        <div class="glyph">[--]</div>
+        <div>No data. Run the engine first.</div>
+      </div>
+      <div id="allocation-content" style="display:none"></div>
+    </div>
+
+    <!-- STRESS TAB -->
+    <div class="tab-panel" id="tab-stress">
+      <div class="empty-state" id="stress-empty">
+        <div class="glyph">[--]</div>
+        <div>No data. Run the engine first.</div>
+      </div>
+      <div id="stress-content" style="display:none"></div>
+    </div>
+
+    <!-- ROADMAP TAB -->
+    <div class="tab-panel" id="tab-roadmap">
+      <div class="empty-state" id="roadmap-empty">
+        <div class="glyph">[--]</div>
+        <div>No data. Run the engine first.</div>
+      </div>
+      <div id="roadmap-content" style="display:none"></div>
+    </div>
+
+  </main>
+</div>
+
+<!-- MATH MODAL -->
+<div class="math-overlay" id="mathOverlay" onclick="closeMath(event)">
+  <div class="math-modal">
+    <div class="math-modal-header">
+      <div class="math-modal-title" id="mathTitle">Formula Derivation</div>
+      <button class="close-btn" onclick="closeMath()">&times;</button>
+    </div>
+    <div class="math-modal-body" id="mathBody"></div>
+  </div>
+</div>
+
+<script>
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  UTILITY
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+const fmt = (n) => '₹' + Math.round(n).toLocaleString('en-IN');
+const pct = (n) => n.toFixed(1) + '%';
+const g = (id) => parseFloat(document.getElementById(id).value) || 0;
+
+function switchTab(name) {
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+
+function showMath(title, html) {
+  document.getElementById('mathTitle').textContent = title;
+  document.getElementById('mathBody').innerHTML = html;
+  document.getElementById('mathOverlay').classList.add('open');
+}
+
+function closeMath(e) {
+  if (!e || e.target === document.getElementById('mathOverlay')) {
+    document.getElementById('mathOverlay').classList.remove('open');
+  }
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  CORE ENGINE
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+let PLAN = null;
+
+function runEngine() {
+  const income        = g('income');
+  const fixedExp      = g('fixed_exp');
+  const varExp        = g('var_exp');
+  const existingDebt  = g('existing_debt');
+  const totalExp      = fixedExp + varExp + existingDebt;
+  const surplus       = income - totalExp;
+
+  const efMonths      = g('ef_months');
+  const efTimeline    = g('ef_timeline');
+  const houseTarget   = g('house_target');
+  const houseTimeline = g('house_timeline');
+  const retireTarget  = g('retire_target');
+  const retireYears   = g('retire_years');
+  const retireMonths  = retireYears * 12;
+
+  const risk          = document.getElementById('risk').value;
+  const sipReturnAnnual = g('sip_return') / 100;
+  const fdRateAnnual  = g('fd_rate') / 100;
+
+  const monthlyExpenses = fixedExp + varExp;
+
+  // ─ Emergency Fund Target ─
+  const efTarget = efMonths * monthlyExpenses;
+
+  // ─ SIP Monthly Rate ─
+  const sipR = sipReturnAnnual / 12;
+  const fdR  = fdRateAnnual / 12;
+
+  // ─ FEASIBILITY ─
+  // Monthly needed per goal (without compounding for EF/House, with SIP formula for retirement)
+  const efMonthly = efTarget / efTimeline;
+  const houseMonthly = houseTarget / houseTimeline;
+  // SIP formula: P = FV * r / ((1+r)^n - 1)
+  const retireSIPNeeded = retireTarget * sipR / (Math.pow(1 + sipR, retireMonths) - 1);
+  const totalGoalNeeded = efMonthly + houseMonthly + retireSIPNeeded;
+
+  // ─ RISK WEIGHTS (Derived) ─
+  // Base urgency score per goal: urgency = 1 / timeline_months (higher urgency = shorter timeline)
+  // EF is always highest priority (liquidity preference factor = 2.0)
+  // House is medium priority (factor = 1.0)
+  // Retirement has growth focus -> SIP weight increases with risk
+  // Debt repayment priority factor by risk: conservative = 1.5, moderate = 1.0, aggressive = 0.5
+
+  const riskMultipliers = {
+    conservative: { sip: 0.5,  fd: 1.5,  ef: 1.8,  debt: 1.5 },
+    moderate:     { sip: 1.0,  fd: 1.0,  ef: 1.5,  debt: 1.0 },
+    aggressive:   { sip: 2.0,  fd: 0.5,  ef: 1.2,  debt: 0.7 }
+  };
+
+  const RM = riskMultipliers[risk];
+
+  // Urgency scores (normalized need / surplus)
+  const efUrgency      = (efMonthly / Math.max(surplus, 1)) * RM.ef;
+  const houseUrgency   = (houseMonthly / Math.max(surplus, 1)) * 1.0;
+  const retireUrgency  = (retireSIPNeeded / Math.max(surplus, 1)) * RM.sip;
+  const fdUrgency      = 0.3 * RM.fd;    // FD is a residual buffer instrument
+  const debtUrgency    = (existingDebt > 0 ? 0.5 : 0) * RM.debt;
+
+  const rawSum = efUrgency + houseUrgency + retireUrgency + fdUrgency + debtUrgency;
+
+  // Normalized weights
+  const wEF     = efUrgency / rawSum;
+  const wHouse  = houseUrgency / rawSum;
+  const wSIP    = retireUrgency / rawSum;
+  const wFD     = fdUrgency / rawSum;
+  const wDebt   = debtUrgency / rawSum;
+
+  // Monthly allocations
+  const allocEF    = Math.max(0, surplus * wEF);
+  const allocHouse = Math.max(0, surplus * wHouse);
+  const allocSIP   = Math.max(0, surplus * wSIP);
+  const allocFD    = Math.max(0, surplus * wFD);
+  const allocDebt  = Math.max(0, surplus * wDebt);
+
+  // ─ FEASIBILITY CHECK ─
+  const efFeasible    = allocEF * efTimeline >= efTarget;
+  const houseFeasible = allocHouse * houseTimeline >= houseTarget;
+  // SIP future value check
+  const sipFV         = allocSIP * ((Math.pow(1 + sipR, retireMonths) - 1) / sipR);
+  const retireFeasible = sipFV >= retireTarget;
+
+  // Adjusted timelines if not feasible
+  const efAdjTimeline    = !efFeasible    ? Math.ceil(efTarget / allocEF) : efTimeline;
+  const houseAdjTimeline = !houseFeasible ? Math.ceil(houseTarget / allocHouse) : houseTimeline;
+  // For retirement: adjusted SIP needed if target not met
+  const retireAdjSIP     = !retireFeasible ? retireTarget * sipR / (Math.pow(1 + sipR, retireMonths) - 1) : allocSIP;
+
+  // ─ STRESS TESTS ─
+  // S1: Job loss 3 months
+  const s1MonthsLost = 3;
+  const s1IncomeLost = income * s1MonthsLost;
+  const s1EFConsumed = Math.min(s1IncomeLost, efTarget);
+  const s1EFRemaining = Math.max(0, (allocEF * efTimeline) - s1EFConsumed);
+  const s1SIPDelay = s1MonthsLost;
+  const s1HouseDelta = allocHouse * s1MonthsLost;
+  const s1RecoveryMonths = Math.ceil(s1EFConsumed / allocEF);
+
+  // S2: Medical emergency ₹1L
+  const s2Cost = 100000;
+  const s2EFAfter = Math.max(0, efTarget - s2Cost);
+  const s2ReplenishMonths = Math.ceil(s2Cost / allocEF);
+  const s2SIPImpact = s2Cost; // lump-sum from liquid savings
+  const s2PlanImpact = s2EFAfter < (3 * monthlyExpenses); // critical if <3mo buffer
+
+  // S3: Inflation spike +2%
+  const s3InflationAdd = 0.02;
+  const s3NewVarExp = varExp * (1 + s3InflationAdd);
+  const s3NewSurplus = income - (fixedExp + s3NewVarExp + existingDebt);
+  const s3SurplusDelta = s3NewSurplus - surplus;
+  const s3NewAllocSIP = s3NewSurplus * wSIP;
+  const s3NewSIPFV = s3NewAllocSIP * ((Math.pow(1 + sipR, retireMonths) - 1) / sipR);
+  const s3RetireGap = retireTarget - s3NewSIPFV;
+
+  PLAN = {
+    income, fixedExp, varExp, existingDebt, totalExp, surplus, monthlyExpenses,
+    efTarget, efTimeline, efMonthly, houseTarget, houseTimeline, houseMonthly,
+    retireTarget, retireMonths, retireSIPNeeded,
+    sipR, fdR, sipReturnAnnual, fdRateAnnual,
+    risk, RM,
+    efUrgency, houseUrgency, retireUrgency, fdUrgency, debtUrgency, rawSum,
+    wEF, wHouse, wSIP, wFD, wDebt,
+    allocEF, allocHouse, allocSIP, allocFD, allocDebt,
+    efFeasible, houseFeasible, retireFeasible,
+    sipFV, efAdjTimeline, houseAdjTimeline, retireAdjSIP,
+    s1: { s1MonthsLost, s1IncomeLost, s1EFConsumed, s1EFRemaining, s1SIPDelay, s1HouseDelta, s1RecoveryMonths },
+    s2: { s2Cost, s2EFAfter, s2ReplenishMonths, s2SIPImpact, s2PlanImpact },
+    s3: { s3InflationAdd, s3NewVarExp, s3NewSurplus, s3SurplusDelta, s3NewAllocSIP, s3NewSIPFV, s3RetireGap }
+  };
+
+  renderAll();
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  RENDER
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function renderAll() {
+  renderOverview();
+  renderFeasibility();
+  renderAllocation();
+  renderStress();
+  renderRoadmap();
+}
+
+// ── OVERVIEW ──
+function renderOverview() {
+  const P = PLAN;
+  document.getElementById('overview-empty').style.display = 'none';
+  const el = document.getElementById('overview-content');
+  el.style.display = 'block';
+
+  const feasCount = [P.efFeasible, P.houseFeasible, P.retireFeasible].filter(Boolean).length;
+  const surplusRatio = P.surplus / P.income * 100;
+
+  el.innerHTML = `
+    <div class="kpi-row fade-in">
+      <div class="kpi-card">
+        <div class="kpi-label">Monthly Surplus</div>
+        <div class="kpi-value ${P.surplus >= 0 ? 'pos' : 'neg'}">${fmt(P.surplus)}</div>
+        <div class="kpi-sub">${pct(surplusRatio)} of income</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Goals Feasible</div>
+        <div class="kpi-value gold">${feasCount} / 3</div>
+        <div class="kpi-sub">at current allocation</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Emergency Fund Target</div>
+        <div class="kpi-value">${fmt(P.efTarget)}</div>
+        <div class="kpi-sub">${P.efMonths} months of expenses</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Retirement SIP Needed</div>
+        <div class="kpi-value">${fmt(P.retireSIPNeeded)}</div>
+        <div class="kpi-sub">per month @ ${pct(P.sipReturnAnnual * 100)} CAGR</div>
+      </div>
+    </div>
+
+    <div class="panel-grid fade-in">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Income Breakdown</div>
+          <button class="show-math-btn" onclick="mathIncomeSurplus()">Show Math</button>
+        </div>
+        <div class="panel-body">
+          ${renderBreakdownBar('Fixed Expenses', P.fixedExp, P.income, '#d64f4f')}
+          ${renderBreakdownBar('Variable Expenses', P.varExp, P.income, '#e09d3d')}
+          ${renderBreakdownBar('Debt Repayment', P.existingDebt, P.income, '#4a8fe8')}
+          ${renderBreakdownBar('Investable Surplus', P.surplus, P.income, '#4caf7d')}
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Surplus Allocation Summary</div>
+          <button class="show-math-btn" onclick="mathWeights()">Show Math</button>
+        </div>
+        <div class="panel-body">
+          ${renderBreakdownBar('Emergency Fund', P.allocEF, P.surplus, '#c9a84c')}
+          ${renderBreakdownBar('House Down Payment', P.allocHouse, P.surplus, '#4a8fe8')}
+          ${renderBreakdownBar('SIP / Mutual Funds', P.allocSIP, P.surplus, '#4caf7d')}
+          ${renderBreakdownBar('Fixed Deposit', P.allocFD, P.surplus, '#888888')}
+          ${P.allocDebt > 0 ? renderBreakdownBar('Extra Debt Repayment', P.allocDebt, P.surplus, '#d64f4f') : ''}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderBreakdownBar(label, value, total, color) {
+  const pctVal = total > 0 ? Math.max(0, value / total * 100) : 0;
+  return `
+    <div class="alloc-row">
+      <div class="alloc-meta">
+        <span class="alloc-name">${label}</span>
+        <span class="alloc-numbers">${fmt(value)} &nbsp; <span style="color:var(--text-muted)">${pct(pctVal)}</span></span>
+      </div>
+      <div class="alloc-bar-track">
+        <div class="alloc-bar-fill" style="width:${Math.min(100, pctVal)}%;background:${color}"></div>
+      </div>
+    </div>
+  `;
+}
+
+// ── FEASIBILITY ──
+function renderFeasibility() {
+  const P = PLAN;
+  document.getElementById('feasibility-empty').style.display = 'none';
+  const el = document.getElementById('feasibility-content');
+  el.style.display = 'block';
+
+  el.innerHTML = `
+    <div class="panel fade-in" style="margin-bottom:16px">
+      <div class="panel-header">
+        <div class="panel-title">Goal Feasibility Analysis</div>
+        <button class="show-math-btn" onclick="mathFeasibility()">Show Math</button>
+      </div>
+      <div class="panel-body" style="padding:0">
+        <table class="feasibility-table">
+          <thead>
+            <tr>
+              <th>Goal</th>
+              <th>Target</th>
+              <th>Timeline</th>
+              <th>Req. Monthly</th>
+              <th>Allocated</th>
+              <th>Status</th>
+              <th>Adj. Timeline</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Emergency Fund</td>
+              <td>${fmt(P.efTarget)}</td>
+              <td>${P.efTimeline} mo</td>
+              <td>${fmt(P.efMonthly)}</td>
+              <td>${fmt(P.allocEF)}</td>
+              <td><span class="badge ${P.efFeasible ? 'ok' : 'warn'}">${P.efFeasible ? 'Feasible' : 'Adjust'}</span></td>
+              <td>${P.efFeasible ? '—' : P.efAdjTimeline + ' mo'}</td>
+            </tr>
+            <tr>
+              <td>House Down Payment</td>
+              <td>${fmt(P.houseTarget)}</td>
+              <td>${P.houseTimeline} mo</td>
+              <td>${fmt(P.houseMonthly)}</td>
+              <td>${fmt(P.allocHouse)}</td>
+              <td><span class="badge ${P.houseFeasible ? 'ok' : 'warn'}">${P.houseFeasible ? 'Feasible' : 'Adjust'}</span></td>
+              <td>${P.houseFeasible ? '—' : P.houseAdjTimeline + ' mo'}</td>
+            </tr>
+            <tr>
+              <td>Retirement Corpus</td>
+              <td>${fmt(P.retireTarget)}</td>
+              <td>${P.retireMonths} mo</td>
+              <td>${fmt(P.retireSIPNeeded)}</td>
+              <td>${fmt(P.allocSIP)}</td>
+              <td><span class="badge ${P.retireFeasible ? 'ok' : P.allocSIP > 0 ? 'warn' : 'fail'}">${P.retireFeasible ? 'Feasible' : 'Shortfall'}</span></td>
+              <td>${P.retireFeasible ? fmt(P.sipFV) + ' projected' : 'Increase SIP to ' + fmt(P.retireAdjSIP)}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="panel-grid fade-in">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Surplus Adequacy</div>
+        </div>
+        <div class="panel-body">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);line-height:2">
+            <div>Total Goal Requirement: <span style="color:var(--text)">${fmt(P.efMonthly + P.houseMonthly + P.retireSIPNeeded)}</span></div>
+            <div>Available Surplus: <span style="color:${P.surplus >= 0 ? 'var(--green)' : 'var(--red)'}">${fmt(P.surplus)}</span></div>
+            <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+              Net Gap: <span style="color:${P.surplus - (P.efMonthly + P.houseMonthly + P.retireSIPNeeded) >= 0 ? 'var(--green)' : 'var(--red)'}">
+                ${fmt(P.surplus - (P.efMonthly + P.houseMonthly + P.retireSIPNeeded))}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Retirement Projection</div>
+          <button class="show-math-btn" onclick="mathSIP()">Show Math</button>
+        </div>
+        <div class="panel-body">
+          <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);line-height:2">
+            <div>Monthly SIP: <span style="color:var(--text)">${fmt(P.allocSIP)}</span></div>
+            <div>Duration: <span style="color:var(--text)">${P.retireMonths} months</span></div>
+            <div>CAGR: <span style="color:var(--text)">${pct(P.sipReturnAnnual * 100)}</span></div>
+            <div style="border-top:1px solid var(--border);margin-top:6px;padding-top:6px">
+              Projected Corpus: <span style="color:${P.retireFeasible ? 'var(--green)' : 'var(--red)'}">${fmt(P.sipFV)}</span>
+            </div>
+            <div>Target: <span style="color:var(--gold)">${fmt(P.retireTarget)}</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── ALLOCATION ──
+function renderAllocation() {
+  const P = PLAN;
+  document.getElementById('allocation-empty').style.display = 'none';
+  const el = document.getElementById('allocation-content');
+  el.style.display = 'block';
+
+  const allocs = [
+    { name: 'Emergency Fund', val: P.allocEF, w: P.wEF, color: '#c9a84c' },
+    { name: 'House Down Payment', val: P.allocHouse, w: P.wHouse, color: '#4a8fe8' },
+    { name: 'SIP / Mutual Funds', val: P.allocSIP, w: P.wSIP, color: '#4caf7d' },
+    { name: 'Fixed Deposit', val: P.allocFD, w: P.wFD, color: '#888888' },
+    { name: 'Extra Debt Repayment', val: P.allocDebt, w: P.wDebt, color: '#d64f4f' },
+  ];
+
+  el.innerHTML = `
+    <div class="panel-grid fade-in">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Monthly Surplus Distribution</div>
+          <button class="show-math-btn" onclick="mathWeights()">Show Math</button>
+        </div>
+        <div class="panel-body">
+          ${allocs.map(a => `
+            <div class="alloc-row">
+              <div class="alloc-meta">
+                <span class="alloc-name">${a.name}</span>
+                <span class="alloc-numbers">${fmt(a.val)} <span style="color:var(--text-muted)">&nbsp;${pct(a.w * 100)}</span></span>
+              </div>
+              <div class="alloc-bar-track">
+                <div class="alloc-bar-fill" style="width:${(a.w * 100).toFixed(1)}%;background:${a.color}"></div>
+              </div>
+            </div>
+          `).join('')}
+          <div style="border-top:1px solid var(--border);margin-top:12px;padding-top:12px;font-family:var(--mono);font-size:11px;color:var(--text-muted)">
+            Total Surplus: <span style="color:var(--text)">${fmt(P.surplus)}</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">Weight Derivation — Urgency Scores</div>
+          <button class="show-math-btn" onclick="mathWeights()">Show Math</button>
+        </div>
+        <div class="panel-body">
+          <table class="feasibility-table">
+            <thead>
+              <tr>
+                <th>Instrument</th>
+                <th>Raw Score</th>
+                <th>Weight</th>
+                <th>Allocation</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr><td>Emergency Fund</td><td>${P.efUrgency.toFixed(4)}</td><td>${pct(P.wEF * 100)}</td><td>${fmt(P.allocEF)}</td></tr>
+              <tr><td>House Down Payment</td><td>${P.houseUrgency.toFixed(4)}</td><td>${pct(P.wHouse * 100)}</td><td>${fmt(P.allocHouse)}</td></tr>
+              <tr><td>SIP (Retirement)</td><td>${P.retireUrgency.toFixed(4)}</td><td>${pct(P.wSIP * 100)}</td><td>${fmt(P.allocSIP)}</td></tr>
+              <tr><td>Fixed Deposit</td><td>${P.fdUrgency.toFixed(4)}</td><td>${pct(P.wFD * 100)}</td><td>${fmt(P.allocFD)}</td></tr>
+              <tr><td>Extra Debt</td><td>${P.debtUrgency.toFixed(4)}</td><td>${pct(P.wDebt * 100)}</td><td>${fmt(P.allocDebt)}</td></tr>
+              <tr style="border-top:2px solid var(--border-bright)">
+                <td style="color:var(--gold)">Total</td>
+                <td style="color:var(--gold)">${P.rawSum.toFixed(4)}</td>
+                <td style="color:var(--gold)">100%</td>
+                <td style="color:var(--gold)">${fmt(P.surplus)}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel fade-in">
+      <div class="panel-header">
+        <div class="panel-title">Risk Profile Impact — ${P.risk.charAt(0).toUpperCase() + P.risk.slice(1)}</div>
+        <button class="show-math-btn" onclick="mathRiskProfile()">Show Math</button>
+      </div>
+      <div class="panel-body">
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text-muted);line-height:1.8">
+          Risk profile <strong style="color:var(--gold)">${P.risk}</strong> applies the following multipliers to raw urgency scores:
+          SIP multiplier = <strong style="color:var(--text)">${P.RM.sip}</strong> &nbsp;|&nbsp;
+          FD multiplier = <strong style="color:var(--text)">${P.RM.fd}</strong> &nbsp;|&nbsp;
+          EF multiplier = <strong style="color:var(--text)">${P.RM.ef}</strong> &nbsp;|&nbsp;
+          Debt multiplier = <strong style="color:var(--text)">${P.RM.debt}</strong>.
+          Higher multipliers on equity (SIP) for aggressive profiles shift allocation toward growth instruments.
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── STRESS ──
+function renderStress() {
+  const P = PLAN;
+  const { s1, s2, s3 } = P;
+  document.getElementById('stress-empty').style.display = 'none';
+  const el = document.getElementById('stress-content');
+  el.style.display = 'block';
+
+  el.innerHTML = `
+    <div class="scenario-grid fade-in">
+      <div class="scenario-card loss">
+        <div class="scenario-name">S1 — Job Loss (3 Months)</div>
+        <div class="scenario-impact" style="color:var(--red)">${fmt(s1.s1IncomeLost)} lost</div>
+        <div class="scenario-desc">3 months of income = ${fmt(s1.s1IncomeLost)}. Emergency fund absorbs ${fmt(s1.s1EFConsumed)}.</div>
+        <div class="scenario-adjustments">
+          <div class="adj-item">EF depleted by ${fmt(s1.s1EFConsumed)}, ${fmt(s1.s1EFRemaining)} remains</div>
+          <div class="adj-item">SIP paused for ${s1.s1SIPDelay} months</div>
+          <div class="adj-item">House savings gap: ${fmt(s1.s1HouseDelta)}</div>
+          <div class="adj-item">Recovery: ${s1.s1RecoveryMonths} months to replenish EF</div>
+        </div>
+      </div>
+
+      <div class="scenario-card medical">
+        <div class="scenario-name">S2 — Medical Emergency (1L)</div>
+        <div class="scenario-impact" style="color:#e09d3d">${fmt(s2.s2Cost)} shock</div>
+        <div class="scenario-desc">One-time ₹1L expense drawn from emergency fund or savings.</div>
+        <div class="scenario-adjustments">
+          <div class="adj-item">EF after shock: ${fmt(s2.s2EFAfter)}</div>
+          <div class="adj-item ${s2.s2PlanImpact ? 'style="color:var(--red)"' : ''}">Buffer status: ${s2.s2PlanImpact ? 'CRITICAL < 3 months' : 'Adequate'}</div>
+          <div class="adj-item">Replenish in: ${s2.s2ReplenishMonths} months at current EF allocation</div>
+          <div class="adj-item">Consider health insurance to cap exposure</div>
+        </div>
+      </div>
+
+      <div class="scenario-card inflation">
+        <div class="scenario-name">S3 — Inflation Spike (+2%)</div>
+        <div class="scenario-impact" style="color:var(--blue)">${fmt(Math.abs(s3.s3SurplusDelta))} less</div>
+        <div class="scenario-desc">2% inflation on variable expenses reduces monthly surplus.</div>
+        <div class="scenario-adjustments">
+          <div class="adj-item">New var. expenses: ${fmt(s3.s3NewVarExp)}</div>
+          <div class="adj-item">New surplus: ${fmt(s3.s3NewSurplus)}</div>
+          <div class="adj-item">New SIP: ${fmt(s3.s3NewAllocSIP)}</div>
+          <div class="adj-item">Retirement gap: ${s3.s3RetireGap > 0 ? fmt(s3.s3RetireGap) : 'None'}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-grid fade-in">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">S1 Detailed — Job Loss Impact</div>
+          <button class="show-math-btn" onclick="mathStressS1()">Show Math</button>
+        </div>
+        <div class="panel-body">
+          <table class="feasibility-table">
+            <thead><tr><th>Metric</th><th>Pre-Shock</th><th>Post-Shock</th></tr></thead>
+            <tbody>
+              <tr><td>Monthly Income</td><td>${fmt(P.income)}</td><td style="color:var(--red)">${fmt(0)} (paused)</td></tr>
+              <tr><td>Emergency Fund</td><td>${fmt(P.efTarget)}</td><td>${fmt(s1.s1EFRemaining)}</td></tr>
+              <tr><td>Monthly Surplus</td><td>${fmt(P.surplus)}</td><td style="color:var(--red)">${fmt(-P.totalExp)}</td></tr>
+              <tr><td>SIP Contributions</td><td>${fmt(P.allocSIP)}/mo</td><td style="color:var(--text-muted)">Paused</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">S3 Detailed — Inflation Scenario</div>
+          <button class="show-math-btn" onclick="mathStressS3()">Show Math</button>
+        </div>
+        <div class="panel-body">
+          <table class="feasibility-table">
+            <thead><tr><th>Metric</th><th>Base Case</th><th>+2% Inflation</th></tr></thead>
+            <tbody>
+              <tr><td>Variable Expenses</td><td>${fmt(P.varExp)}</td><td style="color:#e09d3d">${fmt(s3.s3NewVarExp)}</td></tr>
+              <tr><td>Surplus</td><td>${fmt(P.surplus)}</td><td style="color:${s3.s3NewSurplus >= 0 ? 'var(--green)' : 'var(--red)' }">${fmt(s3.s3NewSurplus)}</td></tr>
+              <tr><td>SIP Allocation</td><td>${fmt(P.allocSIP)}</td><td>${fmt(s3.s3NewAllocSIP)}</td></tr>
+              <tr><td>Projected Corpus</td><td>${fmt(P.sipFV)}</td><td style="color:${s3.s3NewSIPFV >= P.retireTarget ? 'var(--green)' : 'var(--red)'}">${fmt(s3.s3NewSIPFV)}</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// ── ROADMAP ──
+function renderRoadmap() {
+  const P = PLAN;
+  document.getElementById('roadmap-empty').style.display = 'none';
+  const el = document.getElementById('roadmap-content');
+  el.style.display = 'block';
+
+  let rows = '';
+  let cumEF = 0, cumHouse = 0, cumSIP = 0, cumFD = 0;
+  const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const now = new Date();
+  const startMonthIdx = now.getMonth();
+
+  for (let i = 1; i <= 12; i++) {
+    const monthName = months[(startMonthIdx + i - 1) % 12];
+    const ef    = (cumEF + P.allocEF)    <= P.efTarget ? P.allocEF : Math.max(0, P.efTarget - cumEF);
+    const house = P.allocHouse;
+    const sip   = P.allocSIP;
+    const fd    = P.allocFD;
+
+    cumEF    += ef;
+    cumHouse += house;
+    cumSIP   += sip;
+    cumFD    += fd;
+
+    const note = i === 1 ? 'Start SIP mandate + open FD' :
+                 cumEF >= P.efTarget && ef === 0 ? 'EF complete — redirect to SIP' :
+                 i === 3 ? 'Review & rebalance if needed' :
+                 i === 6 ? 'Mid-year review: check goal progress' :
+                 i === 12 ? 'Annual rebalance + tax planning' : '';
+
+    rows += `
+      <tr>
+        <td class="month-label">Month ${i} (${monthName})</td>
+        <td>${fmt(ef)}</td>
+        <td>${fmt(house)}</td>
+        <td>${fmt(sip)}</td>
+        <td>${fmt(fd)}</td>
+        <td class="running-total">${fmt(cumEF + cumHouse + cumSIP + cumFD)}</td>
+        <td style="color:var(--text-muted);font-size:10px">${note}</td>
+      </tr>
+    `;
+  }
+
+  el.innerHTML = `
+    <div class="panel fade-in">
+      <div class="panel-header">
+        <div class="panel-title">12-Month Action Roadmap</div>
+        <button class="show-math-btn" onclick="mathRoadmap()">Show Math</button>
+      </div>
+      <div class="panel-body" style="padding:0;overflow-x:auto">
+        <table class="roadmap-table">
+          <thead>
+            <tr>
+              <th>Period</th>
+              <th>Emergency Fund</th>
+              <th>House Fund</th>
+              <th>SIP</th>
+              <th>Fixed Deposit</th>
+              <th>Running Total</th>
+              <th>Action Note</th>
+            </tr>
+          </thead>
+          <tbody>${rows}</tbody>
+          <tfoot>
+            <tr style="background:var(--surface2)">
+              <td style="color:var(--gold);font-family:var(--mono);font-size:11px">12-Month Total</td>
+              <td style="color:var(--gold);font-family:var(--mono);font-size:11px">${fmt(Math.min(P.allocEF * 12, P.efTarget))}</td>
+              <td style="color:var(--gold);font-family:var(--mono);font-size:11px">${fmt(P.allocHouse * 12)}</td>
+              <td style="color:var(--gold);font-family:var(--mono);font-size:11px">${fmt(P.allocSIP * 12)}</td>
+              <td style="color:var(--gold);font-family:var(--mono);font-size:11px">${fmt(P.allocFD * 12)}</td>
+              <td style="color:var(--gold);font-family:var(--mono);font-size:11px">${fmt(Math.min(P.allocEF * 12, P.efTarget) + P.allocHouse * 12 + P.allocSIP * 12 + P.allocFD * 12)}</td>
+              <td></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+//  MATH DERIVATION PANELS
+// ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+function mathIncomeSurplus() {
+  const P = PLAN;
+  showMath('Surplus Derivation', `
+    <div class="math-block">
+      <div class="formula">Surplus = Income − Fixed Expenses − Variable Expenses − Debt Repayment</div>
+      <div class="substitution">= ${fmt(P.income)} − ${fmt(P.fixedExp)} − ${fmt(P.varExp)} − ${fmt(P.existingDebt)}</div>
+      <div class="result">= ${fmt(P.surplus)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">Savings Rate = Surplus / Income</div>
+      <div class="substitution">= ${fmt(P.surplus)} / ${fmt(P.income)}</div>
+      <div class="result">= ${pct(P.surplus / P.income * 100)}</div>
+    </div>
+  `);
+}
+
+function mathWeights() {
+  const P = PLAN;
+  showMath('Weighted Allocation Algorithm', `
+    <div class="math-block">
+      <div class="formula">Step 1: Compute Goal-Proportional Need per Instrument</div>
+      <div class="substitution">EF Need/mo = EF Target / EF Timeline = ${fmt(P.efTarget)} / ${P.efTimeline} = ${fmt(P.efMonthly)}</div>
+      <div class="substitution">House Need/mo = House Target / House Timeline = ${fmt(P.houseTarget)} / ${P.houseTimeline} = ${fmt(P.houseMonthly)}</div>
+      <div class="substitution">SIP Need/mo = Retire Target × r / ((1+r)^n − 1) = ${fmt(P.retireSIPNeeded)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">Step 2: Compute Raw Urgency Scores (need / surplus × risk multiplier)</div>
+      <div class="substitution">EF Urgency = (${fmt(P.efMonthly)} / ${fmt(P.surplus)}) × ${P.RM.ef} = ${P.efUrgency.toFixed(5)}</div>
+      <div class="substitution">House Urgency = (${fmt(P.houseMonthly)} / ${fmt(P.surplus)}) × 1.0 = ${P.houseUrgency.toFixed(5)}</div>
+      <div class="substitution">SIP Urgency = (${fmt(P.retireSIPNeeded)} / ${fmt(P.surplus)}) × ${P.RM.sip} = ${P.retireUrgency.toFixed(5)}</div>
+      <div class="substitution">FD Urgency = 0.3 × ${P.RM.fd} = ${P.fdUrgency.toFixed(5)}</div>
+      <div class="substitution">Debt Urgency = 0.5 × ${P.RM.debt} × [debt > 0] = ${P.debtUrgency.toFixed(5)}</div>
+      <div class="result">Sum of Raw Scores = ${P.rawSum.toFixed(5)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">Step 3: Normalize to Weights (raw_score / sum)</div>
+      <div class="substitution">w_EF = ${P.efUrgency.toFixed(5)} / ${P.rawSum.toFixed(5)} = ${pct(P.wEF * 100)}</div>
+      <div class="substitution">w_House = ${P.houseUrgency.toFixed(5)} / ${P.rawSum.toFixed(5)} = ${pct(P.wHouse * 100)}</div>
+      <div class="substitution">w_SIP = ${P.retireUrgency.toFixed(5)} / ${P.rawSum.toFixed(5)} = ${pct(P.wSIP * 100)}</div>
+      <div class="substitution">w_FD = ${P.fdUrgency.toFixed(5)} / ${P.rawSum.toFixed(5)} = ${pct(P.wFD * 100)}</div>
+      <div class="substitution">w_Debt = ${P.debtUrgency.toFixed(5)} / ${P.rawSum.toFixed(5)} = ${pct(P.wDebt * 100)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">Step 4: Apply Weights to Surplus</div>
+      <div class="substitution">Alloc_EF = ${fmt(P.surplus)} × ${pct(P.wEF * 100)} = ${fmt(P.allocEF)}</div>
+      <div class="substitution">Alloc_House = ${fmt(P.surplus)} × ${pct(P.wHouse * 100)} = ${fmt(P.allocHouse)}</div>
+      <div class="substitution">Alloc_SIP = ${fmt(P.surplus)} × ${pct(P.wSIP * 100)} = ${fmt(P.allocSIP)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">Risk Profile: ${P.risk}</div>
+      <div class="substitution">SIP multiplier = ${P.RM.sip} | FD multiplier = ${P.RM.fd} | EF multiplier = ${P.RM.ef} | Debt multiplier = ${P.RM.debt}</div>
+      <div class="substitution">Conservative: higher FD/EF weights (capital preservation). Aggressive: higher SIP weight (growth).</div>
+    </div>
+  `);
+}
+
+function mathFeasibility() {
+  const P = PLAN;
+  showMath('Feasibility Check Formulas', `
+    <div class="math-block">
+      <div class="formula">Emergency Fund: Feasible iff Allocated × Timeline >= Target</div>
+      <div class="substitution">${fmt(P.allocEF)} × ${P.efTimeline} = ${fmt(P.allocEF * P.efTimeline)} vs Target ${fmt(P.efTarget)}</div>
+      <div class="result">${P.efFeasible ? 'Feasible' : 'Adjusted timeline = ceil(Target / Alloc) = ' + P.efAdjTimeline + ' months'}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">House: Feasible iff Allocated × Timeline >= Target</div>
+      <div class="substitution">${fmt(P.allocHouse)} × ${P.houseTimeline} = ${fmt(P.allocHouse * P.houseTimeline)} vs Target ${fmt(P.houseTarget)}</div>
+      <div class="result">${P.houseFeasible ? 'Feasible' : 'Adjusted timeline = ' + P.houseAdjTimeline + ' months'}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">Retirement SIP FV = P × ((1 + r)^n − 1) / r</div>
+      <div class="substitution">Where P = ${fmt(P.allocSIP)}, r = ${(P.sipR * 100).toFixed(4)}%/mo, n = ${P.retireMonths} months</div>
+      <div class="substitution">FV = ${fmt(P.allocSIP)} × ((1 + ${P.sipR.toFixed(6)})^${P.retireMonths} − 1) / ${P.sipR.toFixed(6)}</div>
+      <div class="result">Projected Corpus = ${fmt(P.sipFV)} | Target = ${fmt(P.retireTarget)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">Required SIP (reverse formula): P = FV × r / ((1+r)^n − 1)</div>
+      <div class="substitution">P = ${fmt(P.retireTarget)} × ${P.sipR.toFixed(6)} / ((1 + ${P.sipR.toFixed(6)})^${P.retireMonths} − 1)</div>
+      <div class="result">Required Monthly SIP = ${fmt(P.retireSIPNeeded)}</div>
+    </div>
+  `);
+}
+
+function mathSIP() {
+  const P = PLAN;
+  showMath('SIP Future Value Formula', `
+    <div class="math-block">
+      <div class="formula">SIP Future Value = P × ((1 + r)^n − 1) / r</div>
+      <div class="substitution">P = Monthly SIP = ${fmt(P.allocSIP)}</div>
+      <div class="substitution">r = Monthly Rate = Annual Rate / 12 = ${pct(P.sipReturnAnnual * 100)} / 12 = ${(P.sipR * 100).toFixed(4)}%</div>
+      <div class="substitution">n = Number of months = ${P.retireMonths}</div>
+      <div class="result">FV = ${fmt(P.sipFV)}</div>
+    </div>
+  `);
+}
+
+function mathRiskProfile() {
+  showMath('Risk Multiplier System', `
+    <div class="math-block">
+      <div class="formula">Risk multipliers shift urgency scores, not allocations directly</div>
+      <div class="substitution">Conservative: SIP=0.5, FD=1.5, EF=1.8, Debt=1.5 (capital preservation priority)</div>
+      <div class="substitution">Moderate:     SIP=1.0, FD=1.0, EF=1.5, Debt=1.0 (balanced)</div>
+      <div class="substitution">Aggressive:   SIP=2.0, FD=0.5, EF=1.2, Debt=0.7 (growth priority)</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">urgency_i = (need_i / surplus) × risk_multiplier_i</div>
+      <div class="substitution">Higher urgency → higher normalized weight → higher allocation</div>
+      <div class="substitution">This ensures allocation shifts are mathematically traceable, not hardcoded</div>
+    </div>
+  `);
+}
+
+function mathStressS1() {
+  const P = PLAN;
+  const { s1 } = P;
+  showMath('S1: Job Loss Stress Test', `
+    <div class="math-block">
+      <div class="formula">Income lost = Monthly Income × Months lost</div>
+      <div class="substitution">= ${fmt(P.income)} × ${s1.s1MonthsLost} = ${fmt(s1.s1IncomeLost)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">EF Consumed = min(Income Lost, EF Target)</div>
+      <div class="substitution">= min(${fmt(s1.s1IncomeLost)}, ${fmt(P.efTarget)}) = ${fmt(s1.s1EFConsumed)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">EF Remaining = max(0, Existing EF Target − EF Consumed)</div>
+      <div class="substitution">= max(0, ${fmt(P.efTarget)} − ${fmt(s1.s1EFConsumed)}) = ${fmt(s1.s1EFRemaining)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">EF Recovery Time = ceil(EF Consumed / Monthly EF Allocation)</div>
+      <div class="substitution">= ceil(${fmt(s1.s1EFConsumed)} / ${fmt(P.allocEF)}) = ${s1.s1RecoveryMonths} months</div>
+    </div>
+  `);
+}
+
+function mathStressS3() {
+  const P = PLAN;
+  const { s3 } = P;
+  showMath('S3: Inflation Spike Stress Test', `
+    <div class="math-block">
+      <div class="formula">New Variable Expenses = Old Var Exp × (1 + inflation_delta)</div>
+      <div class="substitution">= ${fmt(P.varExp)} × (1 + ${s3.s3InflationAdd}) = ${fmt(s3.s3NewVarExp)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">New Surplus = Income − Fixed − New Variable − Debt</div>
+      <div class="substitution">= ${fmt(P.income)} − ${fmt(P.fixedExp)} − ${fmt(s3.s3NewVarExp)} − ${fmt(P.existingDebt)} = ${fmt(s3.s3NewSurplus)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">New SIP Allocation = New Surplus × w_SIP</div>
+      <div class="substitution">= ${fmt(s3.s3NewSurplus)} × ${pct(P.wSIP * 100)} = ${fmt(s3.s3NewAllocSIP)}</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">New Projected Corpus = SIP FV formula with new P</div>
+      <div class="substitution">= ${fmt(s3.s3NewAllocSIP)} × ((1 + ${P.sipR.toFixed(6)})^${P.retireMonths} − 1) / ${P.sipR.toFixed(6)}</div>
+      <div class="result">= ${fmt(s3.s3NewSIPFV)}</div>
+    </div>
+  `);
+}
+
+function mathRoadmap() {
+  const P = PLAN;
+  showMath('12-Month Roadmap Derivation', `
+    <div class="math-block">
+      <div class="formula">Monthly allocation per instrument is constant (derived from weights)</div>
+      <div class="substitution">EF: ${fmt(P.allocEF)}/mo until target ${fmt(P.efTarget)} is reached, then redirected</div>
+      <div class="substitution">House: ${fmt(P.allocHouse)}/mo for full 12 months</div>
+      <div class="substitution">SIP: ${fmt(P.allocSIP)}/mo as a standing SIP mandate</div>
+      <div class="substitution">FD: ${fmt(P.allocFD)}/mo to fixed deposit</div>
+    </div>
+    <div class="math-block">
+      <div class="formula">Running Total = cumulative sum of all allocations</div>
+      <div class="substitution">Month n total = n × (allocEF + allocHouse + allocSIP + allocFD), capped at EF target for EF component</div>
+    </div>
+  `);
+}
+
+// Auto-run on load
+window.addEventListener('load', runEngine);
+
+// Live update on input change
+document.querySelectorAll('input, select').forEach(el => {
+  el.addEventListener('change', runEngine);
+  el.addEventListener('input', runEngine);
+});
+</script>
+</body>
+</html>
