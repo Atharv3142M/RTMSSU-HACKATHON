@@ -826,26 +826,54 @@ class _HomePageState extends State<HomePage> {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: _buildActionButton(
-              context,
-              'Add Income',
-              Icons.add,
-              Colors.green,
-                  () => _navigateToAddTransaction(context, false),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  context,
+                  'Add Income',
+                  Icons.add,
+                  Colors.green,
+                      () => _navigateToAddTransaction(context, false),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  context,
+                  'Add Expense',
+                  Icons.remove,
+                  Colors.red,
+                      () => _navigateToAddTransaction(context, true),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: _buildActionButton(
-              context,
-              'Add Expense',
-              Icons.remove,
-              Colors.red,
-                  () => _navigateToAddTransaction(context, true),
-            ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: _buildActionButton(
+                  context,
+                  'Financial Plan',
+                  Icons.account_balance_wallet,
+                  Colors.blue,
+                      () => Get.toNamed('/financial-plan'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: _buildActionButton(
+                  context,
+                  'Analytics',
+                  Icons.analytics_outlined,
+                  Colors.purple,
+                      () => Get.toNamed('/analysis'),
+                ),
+              ),
+            ],
           ),
         ],
       ),
