@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:url_launcher/url_launcher.dart';
@@ -29,6 +30,17 @@ class AnalysisController extends GetxController {
   final marketDataError = ''.obs;
   final marketIndices = <String, dynamic>{}.obs;
   final topGainers = <Map<String, dynamic>>[].obs;
+  final selectedRiskAppetite = 'Moderate'.obs;
+  final monthlyIncomeInput = TextEditingController(text: '80000');
+  final monthlyExpenseInput = TextEditingController(text: '50000');
+  final emergencyGoalInput = TextEditingController(text: '300000');
+  final emergencyMonthsInput = TextEditingController(text: '18');
+  final houseGoalInput = TextEditingController(text: '1200000');
+  final houseMonthsInput = TextEditingController(text: '60');
+  final retirementGoalInput = TextEditingController(text: '5000000');
+  final retirementMonthsInput = TextEditingController(text: '240');
+  final debtInput = TextEditingController(text: '200000');
+  final plannerResult = Rxn<PlanningResult>();
 
   // Chart screenshot keys
   final GlobalKey expenseChartKey = GlobalKey();
@@ -54,6 +66,7 @@ class AnalysisController extends GetxController {
         // Fallback to default user ID if needed
         await fetchTransactions('687a5088ef80ce4d11f829aa');
       }
+      calculatePlanningEngine();
     } catch (e) {
       errorMessage.value = 'Failed to load user data: $e';
     }
@@ -67,6 +80,7 @@ class AnalysisController extends GetxController {
       final fetchedTransactions = await _service.fetchTransactionsByUser(userId);
       transactions.value = fetchedTransactions;
       filteredTransactions.value = fetchedTransactions; // Use all transactions
+      calculatePlanningEngine();
       
     } catch (e) {
       errorMessage.value = 'Failed to load transactions: $e';
@@ -385,6 +399,157 @@ class AnalysisController extends GetxController {
     fetchMarketData();
   }
 
+  void calculatePlanningEngine() {
+    final income = _parseDouble(monthlyIncomeInput.text);
+    final expense = _parseDouble(monthlyExpenseInput.text);
+    final emergencyGoal = _parseDouble(emergencyGoalInput.text);
+    final emergencyMonths = _parseInt(emergencyMonthsInput.text);
+    final houseGoal = _parseDouble(houseGoalInput.text);
+    final houseMonths = _parseInt(houseMonthsInput.text);
+    final retirementGoal = _parseDouble(retirementGoalInput.text);
+    final retirementMonths = _parseInt(retirementMonthsInput.text);
+    final debt = _parseDouble(debtInput.text);
+
+    final surplus = max(0.0, income - expense);
+    final riskMap = {'Low': 0.8, 'Moderate': 1.0, 'High': 1.2};
+    final riskMultiplier = riskMap[selectedRiskAppetite.value] ?? 1.0;
+    final safeMonths = max(1, emergencyMonths);
+    final houseSafeMonths = max(1, houseMonths);
+    final retireSafeMonths = max(1, retirementMonths);
+
+    final emergencyNeedPerMonth = emergencyGoal / safeMonths;
+    final houseNeedPerMonth = houseGoal / houseSafeMonths;
+    final retirementNeedPerMonth = retirementGoal / retireSafeMonths;
+    final debtNeedPerMonth = debt > 0 ? debt / 24 : 0.0;
+
+    final wEmergency = emergencyNeedPerMonth * 1.5;
+    final wSip = retirementNeedPerMonth * riskMultiplier;
+    final wFd = houseNeedPerMonth * (1.3 - (riskMultiplier - 0.8));
+    final wDebt = debtNeedPerMonth * 1.4;
+    final totalW = max(1.0, wEmergency + wSip + wFd + wDebt);
+
+    final emergencyAlloc = surplus * (wEmergency / totalW);
+    final sipAlloc = surplus * (wSip / totalW);
+    final fdAlloc = surplus * (wFd / totalW);
+    final debtAlloc = surplus * (wDebt / totalW);
+
+    GoalFeasibility buildGoal(String name, double target, int months, double monthlyAllocation) {
+      final achievable = monthlyAllocation * max(1, months);
+      final isAchievable = achievable >= target;
+      final requiredTimelineMonths = monthlyAllocation > 0 ? (target / monthlyAllocation).ceil() : 9999;
+      return GoalFeasibility(
+        name: name,
+        targetAmount: target,
+        timelineMonths: months,
+        monthlyAllocation: monthlyAllocation,
+        achievableAmount: achievable,
+        isAchievable: isAchievable,
+        requiredTimelineMonths: requiredTimelineMonths,
+        math: '$name feasibility = monthly allocation ($monthlyAllocation) x timeline months ($months) = $achievable.',
+      );
+    }
+
+    final goals = [
+      buildGoal('Emergency Fund', emergencyGoal, safeMonths, emergencyAlloc),
+      buildGoal('House Down Payment', houseGoal, houseSafeMonths, fdAlloc),
+      buildGoal('Retirement', retirementGoal, retireSafeMonths, sipAlloc),
+    ];
+
+    final stressTests = _buildStressTests(
+      income: income,
+      expense: expense,
+      surplus: surplus,
+      emergencyAllocation: emergencyAlloc,
+      sipAllocation: sipAlloc,
+      fdAllocation: fdAlloc,
+      debtAllocation: debtAlloc,
+    );
+
+    final roadmap = List<RoadmapMonth>.generate(12, (index) {
+      final month = index + 1;
+      return RoadmapMonth(
+        month: month,
+        emergency: emergencyAlloc,
+        sip: sipAlloc,
+        fd: fdAlloc,
+        debtRepayment: debtAlloc,
+        math:
+            'Month $month allocation follows weighted formula: surplus ($surplus) x weight share.',
+      );
+    });
+
+    plannerResult.value = PlanningResult(
+      monthlyIncome: income,
+      monthlyExpense: expense,
+      monthlySurplus: surplus,
+      riskAppetite: selectedRiskAppetite.value,
+      weights: AllocationWeights(
+        emergency: wEmergency,
+        sip: wSip,
+        fd: wFd,
+        debt: wDebt,
+        total: totalW,
+        math:
+            'Weight formulas: emergency=(goal/month)*1.5, SIP=(retirement/month)*riskMultiplier, FD=(house/month)*(1.3-(riskMultiplier-0.8)), debt=(debt/24)*1.4.',
+      ),
+      allocations: MonthlyAllocations(
+        emergency: emergencyAlloc,
+        sip: sipAlloc,
+        fd: fdAlloc,
+        debtRepayment: debtAlloc,
+        math:
+            'Allocation formula: category = surplus ($surplus) x categoryWeight / totalWeight ($totalW).',
+      ),
+      goals: goals,
+      stressTests: stressTests,
+      roadmap: roadmap,
+    );
+  }
+
+  List<StressTestResult> _buildStressTests({
+    required double income,
+    required double expense,
+    required double surplus,
+    required double emergencyAllocation,
+    required double sipAllocation,
+    required double fdAllocation,
+    required double debtAllocation,
+  }) {
+    final noIncomeDeficit = max(0.0, (expense * 3) - (surplus * 3));
+    final inflationExpense = expense * 1.02;
+    final inflationSurplus = max(0.0, income - inflationExpense);
+    final inflationDropPct = surplus == 0 ? 0.0 : ((surplus - inflationSurplus) / surplus) * 100;
+    return [
+      StressTestResult(
+        scenario: 'Job loss for 3 months',
+        impact: 'Needs emergency buffer of ₹${noIncomeDeficit.toStringAsFixed(0)} to survive 3 months.',
+        adjustment:
+            'Increase emergency allocation by 20% until emergency fund >= 3 x monthly expenses.',
+        math:
+            'Deficit = (monthly expense x 3) - (monthly surplus x 3) = (${expense.toStringAsFixed(0)} x 3) - (${surplus.toStringAsFixed(0)} x 3).',
+      ),
+      StressTestResult(
+        scenario: 'Medical emergency of ₹1L',
+        impact: 'Immediate ₹100000 drawdown from emergency corpus.',
+        adjustment:
+            'Temporarily divert 30% SIP + 20% FD into emergency replenishment for 6 months.',
+        math:
+            'Replenishment/month = (SIP x 0.30) + (FD x 0.20) = ${sipAllocation.toStringAsFixed(0)} x 0.30 + ${fdAllocation.toStringAsFixed(0)} x 0.20.',
+      ),
+      StressTestResult(
+        scenario: 'Inflation spike of 2%',
+        impact: 'Monthly expense rises to ₹${inflationExpense.toStringAsFixed(0)} and surplus drops ${inflationDropPct.toStringAsFixed(1)}%.',
+        adjustment:
+            'Trim discretionary expenses by 2% or increase income to recover lost surplus.',
+        math:
+            'New expense = expense x 1.02, new surplus = income - new expense = ${income.toStringAsFixed(0)} - ${inflationExpense.toStringAsFixed(0)}.',
+      ),
+    ];
+  }
+
+  double _parseDouble(String value) => double.tryParse(value.trim()) ?? 0.0;
+  int _parseInt(String value) => int.tryParse(value.trim()) ?? 0;
+
   // Launch URL to download PDF
   Future<void> launchDownloadUrl(String url) async {
     try {
@@ -411,6 +576,20 @@ class AnalysisController extends GetxController {
       );
     }
   }
+
+  @override
+  void onClose() {
+    monthlyIncomeInput.dispose();
+    monthlyExpenseInput.dispose();
+    emergencyGoalInput.dispose();
+    emergencyMonthsInput.dispose();
+    houseGoalInput.dispose();
+    houseMonthsInput.dispose();
+    retirementGoalInput.dispose();
+    retirementMonthsInput.dispose();
+    debtInput.dispose();
+    super.onClose();
+  }
 }
 
 // Class to hold monthly trends data
@@ -421,4 +600,116 @@ class MonthlyTrendsData {
   final DateTime date; // Store actual date for sorting
 
   MonthlyTrendsData(this.month, this.income, this.expense, this.date);
+}
+
+class PlanningResult {
+  final double monthlyIncome;
+  final double monthlyExpense;
+  final double monthlySurplus;
+  final String riskAppetite;
+  final AllocationWeights weights;
+  final MonthlyAllocations allocations;
+  final List<GoalFeasibility> goals;
+  final List<StressTestResult> stressTests;
+  final List<RoadmapMonth> roadmap;
+
+  PlanningResult({
+    required this.monthlyIncome,
+    required this.monthlyExpense,
+    required this.monthlySurplus,
+    required this.riskAppetite,
+    required this.weights,
+    required this.allocations,
+    required this.goals,
+    required this.stressTests,
+    required this.roadmap,
+  });
+}
+
+class AllocationWeights {
+  final double emergency;
+  final double sip;
+  final double fd;
+  final double debt;
+  final double total;
+  final String math;
+
+  AllocationWeights({
+    required this.emergency,
+    required this.sip,
+    required this.fd,
+    required this.debt,
+    required this.total,
+    required this.math,
+  });
+}
+
+class MonthlyAllocations {
+  final double emergency;
+  final double sip;
+  final double fd;
+  final double debtRepayment;
+  final String math;
+
+  MonthlyAllocations({
+    required this.emergency,
+    required this.sip,
+    required this.fd,
+    required this.debtRepayment,
+    required this.math,
+  });
+}
+
+class GoalFeasibility {
+  final String name;
+  final double targetAmount;
+  final int timelineMonths;
+  final double monthlyAllocation;
+  final double achievableAmount;
+  final bool isAchievable;
+  final int requiredTimelineMonths;
+  final String math;
+
+  GoalFeasibility({
+    required this.name,
+    required this.targetAmount,
+    required this.timelineMonths,
+    required this.monthlyAllocation,
+    required this.achievableAmount,
+    required this.isAchievable,
+    required this.requiredTimelineMonths,
+    required this.math,
+  });
+}
+
+class StressTestResult {
+  final String scenario;
+  final String impact;
+  final String adjustment;
+  final String math;
+
+  StressTestResult({
+    required this.scenario,
+    required this.impact,
+    required this.adjustment,
+    required this.math,
+  });
+}
+
+class RoadmapMonth {
+  final int month;
+  final double emergency;
+  final double sip;
+  final double fd;
+  final double debtRepayment;
+  final String math;
+
+  RoadmapMonth({
+    required this.month,
+    required this.emergency,
+    required this.sip,
+    required this.fd,
+    required this.debtRepayment,
+    required this.math,
+  });
 }

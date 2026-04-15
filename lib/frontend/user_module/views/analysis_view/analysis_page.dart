@@ -101,6 +101,8 @@ class AnalysisPage extends StatelessWidget {
             children: [
               _buildSummaryCards(context),
               const SizedBox(height: 32),
+              _buildPlanningEngineSection(context),
+              const SizedBox(height: 32),
               
               // Download Report Button
               const SizedBox(height: 12),
@@ -1239,6 +1241,213 @@ class AnalysisPage extends StatelessWidget {
   }
   
   // Widget to show error messages
+  Widget _buildPlanningEngineSection(BuildContext context) {
+    final theme = Theme.of(context);
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Multi-Objective Planning Engine',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.bold,
+                color: theme.colorScheme.primary,
+              ),
+            ),
+            const SizedBox(height: 12),
+            _buildInputRow(context, 'Monthly Income (₹)', controller.monthlyIncomeInput),
+            const SizedBox(height: 8),
+            _buildInputRow(context, 'Monthly Expenses (₹)', controller.monthlyExpenseInput),
+            const SizedBox(height: 8),
+            _buildInputRow(context, 'Emergency Goal (₹)', controller.emergencyGoalInput),
+            const SizedBox(height: 8),
+            _buildInputRow(context, 'Emergency Timeline (months)', controller.emergencyMonthsInput),
+            const SizedBox(height: 8),
+            _buildInputRow(context, 'House Goal (₹)', controller.houseGoalInput),
+            const SizedBox(height: 8),
+            _buildInputRow(context, 'House Timeline (months)', controller.houseMonthsInput),
+            const SizedBox(height: 8),
+            _buildInputRow(context, 'Retirement Goal (₹)', controller.retirementGoalInput),
+            const SizedBox(height: 8),
+            _buildInputRow(context, 'Retirement Timeline (months)', controller.retirementMonthsInput),
+            const SizedBox(height: 8),
+            _buildInputRow(context, 'Outstanding Debt (₹)', controller.debtInput),
+            const SizedBox(height: 8),
+            Obx(
+              () => DropdownButtonFormField<String>(
+                value: controller.selectedRiskAppetite.value,
+                decoration: const InputDecoration(
+                  labelText: 'Risk Appetite',
+                  border: OutlineInputBorder(),
+                ),
+                items: const ['Low', 'Moderate', 'High']
+                    .map((risk) => DropdownMenuItem(value: risk, child: Text(risk)))
+                    .toList(),
+                onChanged: (value) {
+                  if (value != null) {
+                    controller.selectedRiskAppetite.value = value;
+                    controller.calculatePlanningEngine();
+                  }
+                },
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: controller.calculatePlanningEngine,
+                child: const Text('Run Planning Engine'),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Obx(() {
+              final result = controller.plannerResult.value;
+              if (result == null) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Surplus: ₹${result.monthlySurplus.toStringAsFixed(0)}',
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 6),
+                  _buildMathCard(
+                    context,
+                    title: 'Weighted Allocation',
+                    subtitle:
+                        'Emergency ₹${result.allocations.emergency.toStringAsFixed(0)} | SIP ₹${result.allocations.sip.toStringAsFixed(0)} | FD ₹${result.allocations.fd.toStringAsFixed(0)} | Debt ₹${result.allocations.debtRepayment.toStringAsFixed(0)}',
+                    math: '${result.weights.math}\n${result.allocations.math}',
+                  ),
+                  const SizedBox(height: 8),
+                  ...result.goals.map(
+                    (goal) => _buildMathCard(
+                      context,
+                      title: '${goal.name} - ${goal.isAchievable ? "Achievable" : "Needs timeline adjustment"}',
+                      subtitle:
+                          'Target ₹${goal.targetAmount.toStringAsFixed(0)} | Timeline ${goal.timelineMonths} months | Required ${goal.requiredTimelineMonths} months',
+                      math: goal.math,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  ...result.stressTests.map(
+                    (test) => _buildMathCard(
+                      context,
+                      title: test.scenario,
+                      subtitle: '${test.impact}\nAdjustment: ${test.adjustment}',
+                      math: test.math,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildRoadmapPreview(context, result),
+                ],
+              );
+            }),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildInputRow(BuildContext context, String label, TextEditingController input) {
+    return TextField(
+      controller: input,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: label,
+        border: const OutlineInputBorder(),
+        isDense: true,
+      ),
+    );
+  }
+
+  Widget _buildMathCard(
+    BuildContext context, {
+    required String title,
+    required String subtitle,
+    required String math,
+  }) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 4),
+          Text(subtitle, style: Theme.of(context).textTheme.bodySmall),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => _showMathDialog(context, title, math),
+              child: const Text('Show Math'),
+            ),
+          )
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRoadmapPreview(BuildContext context, PlanningResult result) {
+    final preview = result.roadmap.take(12).toList();
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceVariant.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text('12-Month Roadmap', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 6),
+          ...preview.map(
+            (m) => Text(
+              'Month ${m.month}: ₹${m.emergency.toStringAsFixed(0)} Emergency, ₹${m.sip.toStringAsFixed(0)} SIP, ₹${m.fd.toStringAsFixed(0)} FD, ₹${m.debtRepayment.toStringAsFixed(0)} Debt',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          ),
+          Align(
+            alignment: Alignment.centerRight,
+            child: TextButton(
+              onPressed: () => _showMathDialog(
+                context,
+                'Roadmap Formula',
+                preview.map((m) => m.math).join('\n'),
+              ),
+              child: const Text('Show Math'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showMathDialog(BuildContext context, String title, String math) {
+    showDialog<void>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: Text(title),
+        content: SingleChildScrollView(child: Text(math)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text('Close'),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildErrorCard(String message, BuildContext context) {
     final theme = Theme.of(context);
     return Card(

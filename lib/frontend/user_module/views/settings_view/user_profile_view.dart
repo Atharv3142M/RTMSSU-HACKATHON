@@ -407,7 +407,7 @@ class UserProfileView extends StatelessWidget {
       Get.deleteAll();
 
       // Navigate to login page and clear all previous routes
-      Get.offAllNamed('/login'); // Use /login instead of /signup
+      Get.offAllNamed('/signin');
 
       // Show success message
       Get.snackbar(

@@ -3,13 +3,23 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AuthModel {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  late final GoogleSignIn _googleSignIn;
   final String baseUrl = dotenv.env['BASE_URL'] ?? 'http://localhost:5000';
+
+  AuthModel() {
+    final explicitServerClientId = dotenv.env['GOOGLE_WEB_CLIENT_ID'] ??
+        dotenv.env['GOOGLE_SERVER_CLIENT_ID'];
+    _googleSignIn = GoogleSignIn(
+      scopes: const ['email', 'profile'],
+      serverClientId: explicitServerClientId,
+    );
+  }
 
   Future<User?> signUpWithEmail(String email, String password) async {
     try {
@@ -226,14 +236,8 @@ class AuthModel {
 
   Future<User?> loginWithGoogle() async {
     try {
-      // Configure GoogleSignIn with web client ID for Android
-      final GoogleSignIn googleSignIn = GoogleSignIn(
-        // Add your Web Client ID from Firebase Console here
-        // Go to Firebase Console > Project Settings > General > Web Client ID
-        clientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com', // Replace with actual Web Client ID from Firebase
-        scopes: ['email', 'profile'],
-      );
-      final GoogleSignInAccount? googleSignInAccount = await googleSignIn.signIn();
+      await _googleSignIn.signOut();
+      final GoogleSignInAccount? googleSignInAccount = await _googleSignIn.signIn();
       if (googleSignInAccount != null) {
         // Check if email is blocked
         final isBlocked = await checkIfEmailBlocked(googleSignInAccount.email);
@@ -251,6 +255,24 @@ class AuthModel {
         
         final GoogleSignInAuthentication googleSignInAuthentication =
             await googleSignInAccount.authentication;
+        if (googleSignInAuthentication.idToken == null) {
+          final isAndroid = !kIsWeb && defaultTargetPlatform == TargetPlatform.android;
+          final hasServerId = (dotenv.env['GOOGLE_WEB_CLIENT_ID'] ??
+                  dotenv.env['GOOGLE_SERVER_CLIENT_ID']) !=
+              null;
+          final message = isAndroid && !hasServerId
+              ? 'Google sign-in failed on Android: missing server client ID. Add GOOGLE_WEB_CLIENT_ID in .env and ensure Firebase Android OAuth SHA keys are configured.'
+              : 'Google sign-in failed: no ID token returned by Google.';
+          Get.snackbar(
+            'Error',
+            message,
+            backgroundColor: Get.theme.colorScheme.error,
+            colorText: Get.theme.colorScheme.onError,
+            snackPosition: SnackPosition.BOTTOM,
+            duration: const Duration(seconds: 6),
+          );
+          return null;
+        }
         final AuthCredential credential = GoogleAuthProvider.credential(
           accessToken: googleSignInAuthentication.accessToken,
           idToken: googleSignInAuthentication.idToken,

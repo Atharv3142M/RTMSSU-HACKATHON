@@ -93,7 +93,7 @@ class _HomePageState extends State<HomePage> {
               duration: const Duration(seconds: 5),
               mainButton: TextButton(
                 onPressed: () {
-                  Get.offNamed('/login');
+                  Get.offNamed('/signin');
                 },
                 child: Text('Sign In Again', style: TextStyle(color: Colors.white)),
               ),
@@ -826,54 +826,26 @@ class _HomePageState extends State<HomePage> {
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
-      child: Column(
+      child: Row(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionButton(
-                  context,
-                  'Add Income',
-                  Icons.add,
-                  Colors.green,
-                      () => _navigateToAddTransaction(context, false),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildActionButton(
-                  context,
-                  'Add Expense',
-                  Icons.remove,
-                  Colors.red,
-                      () => _navigateToAddTransaction(context, true),
-                ),
-              ),
-            ],
+          Expanded(
+            child: _buildActionButton(
+              context,
+              'Add Income',
+              Icons.add,
+              Colors.green,
+                  () => _navigateToAddTransaction(context, false),
+            ),
           ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildActionButton(
-                  context,
-                  'Financial Plan',
-                  Icons.account_balance_wallet,
-                  Colors.blue,
-                      () => Get.toNamed('/financial-plan'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildActionButton(
-                  context,
-                  'Analytics',
-                  Icons.analytics_outlined,
-                  Colors.purple,
-                      () => Get.toNamed('/analysis'),
-                ),
-              ),
-            ],
+          const SizedBox(width: 12),
+          Expanded(
+            child: _buildActionButton(
+              context,
+              'Add Expense',
+              Icons.remove,
+              Colors.red,
+                  () => _navigateToAddTransaction(context, true),
+            ),
           ),
         ],
       ),
